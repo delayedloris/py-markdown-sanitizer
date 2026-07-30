@@ -48,6 +48,8 @@ _KEEP_TAGS = frozenset(
 )
 
 _MD_IMAGE_RE = re.compile(r"!\[([^\]]*)\]\(([^)]*)\)")
+# Unresolved refs left as text (e.g. glued defs) can re-parse into <img>.
+_MD_REF_IMAGE_RE = re.compile(r"!\[([^\]]*)\]\[([^\]]*)\]")
 # Escape tag-like `<` but keep autolinks: <https://...>
 _RAW_HTML_LT_RE = re.compile(r"<(?=!--|!\[CDATA|/?[A-Za-z][A-Za-z0-9-]*(?=[\s/>]))")
 _CODE_RE = re.compile(r"(```[\s\S]*?```|`[^`\n]+`)")
@@ -126,6 +128,13 @@ def _filter_markdown_images(markdown: str, options: SanitizeOptions) -> str:
     return _outside_code(markdown, lambda part: _MD_IMAGE_RE.sub(repl, part))
 
 
+def _strip_ref_images(markdown: str) -> str:
+    """Drop leftover ![alt][id] — allowed imgs already became ![alt](url)."""
+    return _outside_code(
+        markdown, lambda part: _MD_REF_IMAGE_RE.sub(lambda m: m.group(1), part)
+    )
+
+
 def _escape_raw_html(markdown: str) -> str:
     return _outside_code(markdown, lambda part: _RAW_HTML_LT_RE.sub("&lt;", part))
 
@@ -143,6 +152,7 @@ class MarkdownSanitizer:
         clean = _sanitize_html(html, self.options)
         md = markdownify(clean, heading_style=ATX)
         md = _filter_markdown_images(md, self.options)
+        md = _strip_ref_images(md)
         md = _escape_raw_html(md)
         return md.rstrip() + ("\n" if clean.strip() else "")
 
