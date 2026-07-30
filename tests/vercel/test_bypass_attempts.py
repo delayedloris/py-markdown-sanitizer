@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from urllib.parse import urlparse
+from posixpath import normpath
+from urllib.parse import unquote, urlsplit
 
 import mistune
 import pytest
@@ -68,13 +69,13 @@ ALLOWED_ATTRIBUTES = {
     "disabled",
     "start",
 }
-TRUSTED_ORIGINS = (
-    "https://example.com",
-    "https://trusted.org",
-    "https://images.com",
-    "https://prefix.com",
-)
-PREFIX_PATH = "https://prefix.com/prefix/"
+# host -> required path prefix (None = any path on that host)
+TRUSTED_HOSTS: dict[str, str | None] = {
+    "example.com": None,
+    "trusted.org": None,
+    "images.com": None,
+    "prefix.com": "/prefix/",
+}
 
 _md = mistune.create_markdown(
     escape=False,
@@ -82,24 +83,47 @@ _md = mistune.create_markdown(
 )
 
 
+def _norm_path(path: str) -> str:
+    trailing = path.endswith("/") and path != "/"
+    out = normpath(unquote(path or "/") or "/")
+    if not out.startswith("/"):
+        out = "/" + out
+    if trailing and not out.endswith("/"):
+        out += "/"
+    return out
+
+
 def _is_dangerous_src(url: str) -> str | None:
     if url in {"/forbidden", "#"} or url.startswith("#"):
         return None
-    parsed = urlparse(url)
+    parsed = urlsplit(url)
     if parsed.scheme and parsed.scheme not in {"http", "https"}:
         return "bad protocol"
+    try:
+        if parsed.username is not None or parsed.password is not None:
+            return "userinfo"
+        host = (parsed.hostname or "").lower()
+        _ = parsed.port
+    except ValueError:
+        return "bad host"
     if not parsed.scheme:
         # relative / opaque leftovers
         if url.startswith("/") or url.startswith("./"):
             return "untrusted relative"
         return "bad protocol"
-    origin = f"{parsed.scheme}://{parsed.netloc}"
-    if origin == "https://prefix.com":
-        if not url.startswith(PREFIX_PATH):
-            return "prefix bypass"
-        return None
-    if not any(url.startswith(t) for t in TRUSTED_ORIGINS):
+    if not host:
+        return "bad host"
+    if host not in TRUSTED_HOSTS:
         return "untrusted origin"
+    required = TRUSTED_HOSTS[host]
+    if required is None:
+        return None
+    path = _norm_path(parsed.path or "/")
+    nreq = _norm_path(required)
+    if not nreq.endswith("/"):
+        nreq += "/"
+    if not path.startswith(nreq):
+        return "prefix bypass"
     return None
 
 
