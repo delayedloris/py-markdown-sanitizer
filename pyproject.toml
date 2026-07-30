@@ -22,7 +22,6 @@ Homepage = "https://github.com/delayedloris/py-markdown-sanitizer"
 
 [dependency-groups]
 dev = [
-    "commonmark>=0.9.2",
     "pytest>=8.0",
     "ruff>=0.9",
 ]

@@ -1,8 +1,5 @@
 """Port of Vercel basic-sanitization.test.ts — adapted to image-only scope."""
 
-import pytest
-
-from tests.exclusions import VERCEL_SKIP_REASONS
 from tests.vercel.helpers import sanitize
 
 
@@ -15,7 +12,6 @@ class TestImageSanitization:
     def test_blocks_untrusted_images(self):
         result = sanitize("![Evil](https://evil.com/tracker.gif)")
         assert "evil.com" not in result
-        # Vercel uses ![](/forbidden); we keep alt text
         assert "Evil" in result
 
     def test_handles_relative_image_paths(self):
@@ -27,13 +23,7 @@ class TestImageSanitization:
         assert "data:" not in result
 
 
-class TestLinkSanitization:
-    """Vercel filters links; we leave them alone — skip exact Vercel expectations."""
-
-    @pytest.mark.skip(reason=VERCEL_SKIP_REASONS["link_filtering"])
-    def test_blocks_untrusted_links(self):
-        assert sanitize("[Malicious](https://evil.com/steal)") == "[Malicious](#)\n"
-
+class TestLinksPassThrough:
     def test_allows_trusted_links(self):
         result = sanitize("[Click here](https://example.com/page)")
         assert "https://example.com/page" in result
@@ -55,7 +45,6 @@ Also a bad [link](https://evil.com) and bad ![image](https://evil.com/tracker.gi
         assert "https://example.com/page" in result
         assert "https://images.com/pic.jpg" in result
         assert "https://evil.com/tracker.gif" not in result
-        # link still present (scope difference)
         assert "https://evil.com" in result
 
 
@@ -83,11 +72,6 @@ class TestEdgeCases:
             "[Link](https://example.com/path?query=value&other=123#fragment)"
         )
         assert "https://example.com/path?query=value&other=123#fragment" in result
-
-    @pytest.mark.skip(reason=VERCEL_SKIP_REASONS["url_length"])
-    def test_handles_very_long_urls(self):
-        long_url = "https://example.com/" + "a" * 300
-        assert sanitize(f"[Link]({long_url})") == "[Link](#)\n"
 
 
 class TestReferenceStyle:
