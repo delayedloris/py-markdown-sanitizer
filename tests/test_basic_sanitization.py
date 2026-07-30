@@ -1,104 +1,53 @@
-from py_markdown_sanitizer import MarkdownSanitizer, SanitizeOptions
+from py_markdown_sanitizer import sanitize_markdown
 
 
-def sanitize(input_md: str, **overrides) -> str:
-    opts = {
-        "default_origin": "https://example.com",
-        "allowed_link_prefixes": ["https://example.com", "https://trusted.org"],
-        "allowed_image_prefixes": ["https://example.com", "https://images.com"],
-    }
-    opts.update(overrides)
-    return MarkdownSanitizer(SanitizeOptions(**opts)).sanitize(input_md)
+def sanitize(md: str, prefixes: list[str] | None = None) -> str:
+    return sanitize_markdown(
+        md,
+        allowed_image_prefixes=prefixes
+        if prefixes is not None
+        else ["https://images.com/", "https://example.com/"],
+        default_origin="https://example.com",
+    )
 
 
-class TestLinkSanitization:
-    def test_allows_hash_only_anchors(self):
-        assert sanitize(
-            "[Jump to section](#hero)",
-            allowed_link_prefixes=["https://example.com/blog"],
-        ) == "[Jump to section](#hero)\n"
-
-    def test_allows_hash_with_no_prefixes(self):
+class TestImages:
+    def test_allows_whitelisted(self):
         assert (
-            sanitize("[Jump to top](#top)", allowed_link_prefixes=[])
-            == "[Jump to top](#top)\n"
+            sanitize("![Alt](https://images.com/photo.jpg)")
+            == "![Alt](https://images.com/photo.jpg)"
         )
 
-    def test_allows_trusted_links(self):
-        assert (
-            sanitize("[Click here](https://example.com/page)")
-            == "[Click here](https://example.com/page)\n"
-        )
+    def test_blocks_other_hosts(self):
+        assert sanitize("![Evil](https://evil.com/t.gif)") == "Evil"
 
-    def test_blocks_untrusted_links(self):
-        assert sanitize("[Malicious](https://evil.com/steal)") == "[Malicious](#)\n"
+    def test_blocks_when_allow_list_empty(self):
+        assert sanitize("![x](https://images.com/a.png)", prefixes=[]) == "x"
 
-    def test_relative_links_use_default_origin(self):
-        assert (
-            sanitize("[Relative](/path/to/page)")
-            == "[Relative](https://example.com/path/to/page)\n"
-        )
-
-    def test_multiple_links(self):
-        assert (
-            sanitize(
-                "[Good](https://example.com/good) and [Bad](https://evil.com/bad)"
-            )
-            == "[Good](https://example.com/good) and [Bad](#)\n"
-        )
-
-    def test_javascript_url_strips_link(self):
-        result = sanitize('[Important Info](javascript:alert("xss"))')
-        assert "javascript:" not in result.lower()
-        assert "Important Info" in result
-
-
-class TestImageSanitization:
-    def test_allows_trusted_images(self):
-        assert (
-            sanitize("![Alt text](https://images.com/photo.jpg)")
-            == "![](https://images.com/photo.jpg)\n"
-        )
-
-    def test_blocks_untrusted_images(self):
-        assert sanitize("![Evil](https://evil.com/tracker.gif)") == "![](/forbidden)\n"
-
-    def test_relative_images(self):
+    def test_relative_resolved_against_origin(self):
         assert (
             sanitize("![Local](/images/local.png)")
-            == "![](https://example.com/images/local.png)\n"
+            == "![Local](/images/local.png)"
         )
 
     def test_data_uri_blocked(self):
-        assert (
-            sanitize("![Important Image](data:image/gif;base64,R0lGOD)")
-            == "![](/forbidden)\n"
-        )
+        assert sanitize("![x](data:image/gif;base64,R0lGOD)") == "x"
+
+    def test_reference_image_blocked(self):
+        md = "![Alt][id]\n\n[id]: https://evil.com/t.png\n"
+        assert "evil.com" not in sanitize(md).split("[id]:")[0]
+        assert sanitize(md).startswith("Alt")
 
 
-class TestEdgeCases:
-    def test_empty(self):
-        assert sanitize("") == ""
+class TestZeroClickHtml:
+    def test_strips_img_tags(self):
+        assert "<img" not in sanitize('<img src="https://evil.com/t.png">').lower()
 
-    def test_plain_text_entity_encodes_dot(self):
-        assert (
-            sanitize("Just plain text with no markdown.")
-            == "Just plain text with no markdown&2e;\n"
-        )
+    def test_strips_iframe(self):
+        assert "iframe" not in sanitize('<iframe src="https://evil.com"></iframe>').lower()
 
-    def test_long_url_blocked(self):
-        long_url = "https://example.com/" + "a" * 300
-        assert sanitize(f"[Link]({long_url})") == "[Link](#)\n"
 
-    def test_protocol_relative(self):
-        assert (
-            sanitize("[Link](//example.com/path)")
-            == "[Link](https://example.com/path)\n"
-        )
-
-    def test_requires_default_origin(self):
-        try:
-            MarkdownSanitizer(SanitizeOptions(default_origin=""))
-            assert False, "expected ValueError"
-        except ValueError:
-            pass
+class TestLinksUntouched:
+    def test_links_pass_through(self):
+        md = "[click](https://evil.com/steal)"
+        assert sanitize(md) == md

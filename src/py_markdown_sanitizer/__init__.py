@@ -1,11 +1,6 @@
-"""Python port of Vercel's markdown-to-markdown-sanitizer."""
+"""Sanitize markdown against zero-click image exfiltration."""
 
-from .sanitizer import MarkdownSanitizer, commonmark_escape, sanitize_markdown
+from .sanitizer import MarkdownSanitizer, sanitize_markdown
 from .types import SanitizeOptions
 
-__all__ = [
-    "MarkdownSanitizer",
-    "SanitizeOptions",
-    "commonmark_escape",
-    "sanitize_markdown",
-]
+__all__ = ["MarkdownSanitizer", "SanitizeOptions", "sanitize_markdown"]

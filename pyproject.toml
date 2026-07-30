@@ -4,26 +4,20 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "py-markdown-sanitizer"
-version = "0.1.0"
-description = "Python port of Vercel's markdown-to-markdown-sanitizer"
+version = "0.2.0"
+description = "Block zero-click markdown image exfiltration with a URL allow-list"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"
 authors = [{ name = "Dawson Canby" }]
 keywords = ["markdown", "sanitizer", "security"]
-dependencies = [
-    "mistune>=3.0",
-    "bleach>=6.0",
-    "beautifulsoup4>=4.12",
-    "markdownify>=0.13",
-]
+dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]
 
 [project.urls]
 Homepage = "https://github.com/delayedloris/py-markdown-sanitizer"
-Upstream = "https://github.com/vercel-labs/markdown-sanitizers"
 
 [tool.setuptools.packages.find]
 where = ["src"]
