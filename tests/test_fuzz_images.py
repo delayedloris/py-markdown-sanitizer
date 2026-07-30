@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import mistune
 from bs4 import BeautifulSoup
-from hypothesis import given, settings, strategies as st
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from py_markdown_sanitizer import sanitize_markdown
 
