@@ -191,16 +191,7 @@ COMMONMARK_EXCLUDE = {
 }
 
 # Vercel bypass fixtures that still leak disallowed src / auto-load tags after sanitize.
-BYPASS_EXCLUDE = {
-    "111-hook-timing-exploits.md",  # malformed src=%22title%22 survives
-    "115-dompurify-hook-timing-races.md",  # script via link/html path
-    "142-react-markdown-remark-plugin-exploits.md",
-    "146-react-markdown-skiphtml-escapehtml-bypasses.md",
-    "202-markdown-nesting-attribute-exploits.md",
-    "210-attribute-injection-bypasses.md",
-    "79-image-data-uri-variants.md",  # empty data: svg src remnant
-    "82-markdown-html-interleaving.md",
-}
+BYPASS_EXCLUDE: set[str] = set()
 
 # Vercel behavioral gaps we document as skipped (not image-scoped / no feature).
 VERCEL_SKIP_REASONS = {
