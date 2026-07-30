@@ -1,11 +1,13 @@
 # py-markdown-sanitizer
 
-Tiny markdown sanitizer for two things:
+Markdown sanitizer for two things:
 
-1. **No zero-click exfiltration** — drops disallowed images and strips auto-loading HTML (`img`, `iframe`, `script`, …)
-2. **Configurable image URL allow-list** — only matching `src` / `![]()` URLs are kept
+1. **No zero-click exfiltration** — drops disallowed images and auto-loading HTML
+2. **Configurable image URL allow-list**
 
-Links are left alone (they need a click). Inspired by [Vercel’s markdown-to-markdown-sanitizer](https://github.com/vercel-labs/markdown-sanitizers), not a full port.
+Pipeline: **markdown → HTML (mistune) → sanitize (BeautifulSoup) → markdown (markdownify)**.
+
+Links are left alone (they need a click). Inspired by [Vercel’s approach](https://github.com/vercel-labs/markdown-sanitizers), scoped to images only.
 
 ## Usage
 
@@ -16,7 +18,6 @@ print(sanitize_markdown(
     "ok ![a](https://cdn.example.com/a.png) bad ![b](https://evil.com/t.png)",
     allowed_image_prefixes=["https://cdn.example.com/"],
 ))
-# ok ![a](https://cdn.example.com/a.png) bad b
 ```
 
 Empty allow-list ⇒ all images removed (fail closed).

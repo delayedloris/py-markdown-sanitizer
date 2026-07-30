@@ -1,78 +1,70 @@
 from __future__ import annotations
 
-import re
 from urllib.parse import urljoin
+
+import mistune
+from bs4 import BeautifulSoup, Tag
+from markdownify import ATX, markdownify
+from mistune.renderers.html import HTMLRenderer
 
 from .types import SanitizeOptions
 
-# ![alt](url) and ![alt](url "title")
-_INLINE_IMAGE = re.compile(
-    r"!\[([^\]]*)\]\(\s*<?([^)\s>]+)>?(?:[^)]*)?\)"
+_AUTOLOAD_TAGS = frozenset(
+    {"iframe", "embed", "object", "video", "audio", "source", "track", "script", "svg"}
 )
-
-# ![alt][ref] or ![alt] shortcut — not ![alt](url)
-_REF_IMAGE = re.compile(r"!\[([^\]]*)\](?:\[([^\]]*)\])?(?!\()")
-
-# [ref]: url
-_REF_DEF = re.compile(
-    r"^\[([^\]]+)\]:\s*<?([^\s>]+)>?",
-    re.MULTILINE,
-)
-
-# Auto-loading HTML — fetched without a click
-_AUTOLOAD_HTML = re.compile(
-    r"</?(?:img|iframe|embed|object|video|audio|source|track|link|script|svg)\b[^>]*>",
-    re.IGNORECASE,
-)
+# <link> can prefetch; keep only if it has no href fetch risk — simpler to drop all
+_DROP_TAGS = _AUTOLOAD_TAGS | {"link"}
 
 
 def _is_allowed_image(url: str, options: SanitizeOptions) -> bool:
-    prefixes = options.allowed_image_prefixes
-    if not prefixes:
+    if not options.allowed_image_prefixes:
         return False
-    try:
-        normalized = urljoin(options.default_origin, url.strip())
-    except ValueError:
-        return False
-    # Reject obvious non-http(s) schemes that still auto-fetch or are useless
+    normalized = urljoin(options.default_origin, (url or "").strip())
     lower = normalized.lower()
     if lower.startswith(("javascript:", "vbscript:", "data:")):
         return False
-    return any(normalized.startswith(p) for p in prefixes)
+    return any(normalized.startswith(p) for p in options.allowed_image_prefixes)
+
+
+def _sanitize_html(html: str, options: SanitizeOptions) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+
+    for tag in soup.find_all(_DROP_TAGS):
+        tag.decompose()
+
+    for img in soup.find_all("img"):
+        if not isinstance(img, Tag):
+            continue
+        src = img.get("src") or ""
+        if _is_allowed_image(src, options):
+            # keep only safe attrs
+            alt = img.get("alt", "")
+            img.attrs = {"src": urljoin(options.default_origin, src.strip()), "alt": alt}
+        else:
+            # no fetch — leave alt text if any
+            alt = (img.get("alt") or "").strip()
+            if alt:
+                img.replace_with(alt)
+            else:
+                img.decompose()
+
+    return str(soup)
 
 
 class MarkdownSanitizer:
     def __init__(self, options: SanitizeOptions | None = None) -> None:
         self.options = options or SanitizeOptions()
+        self._md = mistune.create_markdown(
+            renderer=HTMLRenderer(escape=False, allow_harmful_protocols=True),
+            plugins=["strikethrough", "table", "url", "task_lists"],
+        )
 
     def sanitize(self, markdown: str) -> str:
-        refs = {m.group(1): m.group(2) for m in _REF_DEF.finditer(markdown)}
-
-        def replace_inline(m: re.Match) -> str:
-            alt, url = m.group(1), m.group(2)
-            if _is_allowed_image(url, self.options):
-                return m.group(0)
-            return alt  # drop fetch, keep text
-
-        # Inline images first so we don't double-process their ![
-        out = _INLINE_IMAGE.sub(replace_inline, markdown)
-
-        def replace_ref(m: re.Match) -> str:
-            alt, ref = m.group(1), m.group(2)
-            key = ref if ref is not None else alt
-            # Bare ![alt] with no [] is shortcut ref; ![alt][] uses alt as key
-            if ref == "":
-                key = alt
-            url = refs.get(key)
-            if url is None:
-                return m.group(0)  # not a resolvable image ref
-            if _is_allowed_image(url, self.options):
-                return m.group(0)
-            return alt
-
-        out = _REF_IMAGE.sub(replace_ref, out)
-        out = _AUTOLOAD_HTML.sub("", out)
-        return out
+        html = self._md(markdown)
+        clean = _sanitize_html(html, self.options)
+        return markdownify(clean, heading_style=ATX).rstrip() + (
+            "\n" if clean.strip() else ""
+        )
 
 
 def sanitize_markdown(
