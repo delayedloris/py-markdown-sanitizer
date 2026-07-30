@@ -10,7 +10,6 @@ import pytest
 from bs4 import BeautifulSoup
 
 from py_markdown_sanitizer import sanitize_markdown
-from tests.exclusions import BYPASS_EXCLUDE
 
 BYPASS_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "bypass-attempts"
 
@@ -143,8 +142,6 @@ def _bypass_files() -> list[str]:
 
 @pytest.mark.parametrize("filename", _bypass_files())
 def test_bypass_attempt(filename: str):
-    if filename in BYPASS_EXCLUDE:
-        pytest.skip("known failure for image-only / round-trip gaps")
     markdown = (BYPASS_DIR / filename).read_text(encoding="utf-8")
     sanitized = _sanitize(markdown)
     html = _md(sanitized)

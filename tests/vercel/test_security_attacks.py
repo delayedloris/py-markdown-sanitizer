@@ -1,8 +1,5 @@
 """Port of Vercel security-attacks.test.ts — image / auto-load focus."""
 
-import pytest
-
-from tests.exclusions import VERCEL_SKIP_REASONS
 from tests.vercel.helpers import sanitize
 
 
@@ -33,12 +30,6 @@ class TestXssImageVectors:
     def test_blocks_file_protocol_images(self):
         result = sanitize("![Local file](file:///etc/passwd)")
         assert "file:" not in result
-
-
-class TestXssLinkVectors:
-    @pytest.mark.skip(reason=VERCEL_SKIP_REASONS["link_filtering"])
-    def test_blocks_javascript_protocol_in_links(self):
-        assert sanitize('[Click](javascript:alert("xss"))') == "Click\n"
 
 
 class TestHtmlInjection:

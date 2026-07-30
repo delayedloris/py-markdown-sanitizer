@@ -1,8 +1,5 @@
 """Port of Vercel html-sanitization.test.ts — adapted expectations."""
 
-import pytest
-
-from tests.exclusions import VERCEL_SKIP_REASONS
 from tests.vercel.helpers import sanitize
 
 
@@ -24,13 +21,6 @@ class TestSafeHtmlTags:
         result = sanitize('<img src="https://evil.com/tracker.gif" alt="Tracker">')
         assert "evil.com" not in result
         assert "Tracker" in result
-
-    @pytest.mark.skip(reason=VERCEL_SKIP_REASONS["link_filtering"])
-    def test_sanitizes_links_with_untrusted_hrefs(self):
-        assert (
-            sanitize('<a href="https://evil.com/malware">Dangerous link</a>')
-            == "[Dangerous link](#)\n"
-        )
 
 
 class TestDangerousHtmlTags:
