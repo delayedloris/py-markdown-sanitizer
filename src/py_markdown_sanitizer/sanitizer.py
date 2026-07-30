@@ -39,7 +39,8 @@ def _sanitize_html(html: str, options: SanitizeOptions) -> str:
         if _is_allowed_image(src, options):
             # keep only safe attrs
             alt = img.get("alt", "")
-            img.attrs = {"src": urljoin(options.default_origin, src.strip()), "alt": alt}
+            src = urljoin(options.default_origin, src.strip())
+            img.attrs = {"src": src, "alt": alt}
         else:
             # no fetch — leave alt text if any
             alt = (img.get("alt") or "").strip()

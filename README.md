@@ -22,6 +22,18 @@ print(sanitize_markdown(
 
 Empty allow-list ⇒ all images removed (fail closed).
 
+## Develop
+
+Requires [uv](https://docs.astral.sh/uv/).
+
+```bash
+uv sync
+uv run pytest
+uv run ruff check .
+uv run ruff format .
+```
+
 ## License
 
 MIT
+
