@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+import hashlib
+from pathlib import Path
+
 import mistune
 from bs4 import BeautifulSoup
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from py_markdown_sanitizer import sanitize_markdown
+from tests.vercel.test_bypass_attempts import _md as _bypass_md
+from tests.vercel.test_bypass_attempts import _sanitize as _bypass_sanitize
+from tests.vercel.test_bypass_attempts import validate_html
+
+BYPASS_DIR = Path(__file__).resolve().parent / "fixtures" / "bypass-attempts"
 
 # Aggressive consumer: same plugins as the sanitizer, no HTML escaping.
 _md = mistune.create_markdown(
@@ -87,17 +95,40 @@ def find_surviving_images(markdown: str) -> list[str]:
     return [str(img) for img in soup.find_all("img")]
 
 
+def record_bypass_fixture(md: str) -> Path | None:
+    """Write a case only if the bypass suite would also fail; dedupe by issues."""
+    issues = validate_html(_bypass_md(_bypass_sanitize(md)))
+    if not issues:
+        return None
+    key = hashlib.sha1("\n".join(issues).encode()).hexdigest()[:10]
+    path = BYPASS_DIR / f"hypothesis-{key}.md"
+    # Prefer shorter input for the same failure signature.
+    if path.exists() and len(path.read_text(encoding="utf-8")) <= len(md):
+        return path
+    path.write_text(md, encoding="utf-8")
+    return path
+
+
+def assert_no_surviving_images(md: str) -> None:
+    sanitized = sanitize_markdown(md, allowed_image_prefixes=[])
+    survivors = find_surviving_images(sanitized)
+    if survivors:
+        path = record_bypass_fixture(md)
+        note = f"wrote {path.name}" if path else "bypass suite does not fail"
+        raise AssertionError(
+            f"images survived; {note}\n{survivors}\n---\n{sanitized!r}"
+        )
+
+
 @given(random_markdown())
 @settings(max_examples=200, deadline=None)
 def test_empty_allowlist_no_images_survive(md: str):
-    sanitized = sanitize_markdown(md, allowed_image_prefixes=[])
-    survivors = find_surviving_images(sanitized)
-    assert survivors == [], f"images survived:\n{survivors}\n---\n{sanitized!r}"
+    assert_no_surviving_images(md)
 
 
 def test_unresolved_reference_image_does_not_survive():
     # Mistune leaves ![][ref] literal when the definition is glued to other
     # content; markdownify preserves it and a second parse creates <img>.
-    md = '![][ref]\n\n[ref]: //evil.com/t.png![](https://evil.com/t.png "title")'
-    sanitized = sanitize_markdown(md, allowed_image_prefixes=[])
-    assert find_surviving_images(sanitized) == []
+    assert_no_surviving_images(
+        '![][ref]\n\n[ref]: //evil.com/t.png![](https://evil.com/t.png "title")'
+    )
