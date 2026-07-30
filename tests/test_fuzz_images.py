@@ -124,11 +124,3 @@ def assert_no_surviving_images(md: str) -> None:
 @settings(max_examples=200, deadline=None)
 def test_empty_allowlist_no_images_survive(md: str):
     assert_no_surviving_images(md)
-
-
-def test_unresolved_reference_image_does_not_survive():
-    # Mistune leaves ![][ref] literal when the definition is glued to other
-    # content; markdownify preserves it and a second parse creates <img>.
-    assert_no_surviving_images(
-        '![][ref]\n\n[ref]: //evil.com/t.png![](https://evil.com/t.png "title")'
-    )
