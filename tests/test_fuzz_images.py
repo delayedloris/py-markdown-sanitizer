@@ -93,3 +93,11 @@ def test_empty_allowlist_no_images_survive(md: str):
     sanitized = sanitize_markdown(md, allowed_image_prefixes=[])
     survivors = find_surviving_images(sanitized)
     assert survivors == [], f"images survived:\n{survivors}\n---\n{sanitized!r}"
+
+
+def test_unresolved_reference_image_does_not_survive():
+    # Mistune leaves ![][ref] literal when the definition is glued to other
+    # content; markdownify preserves it and a second parse creates <img>.
+    md = '![][ref]\n\n[ref]: //evil.com/t.png![](https://evil.com/t.png "title")'
+    sanitized = sanitize_markdown(md, allowed_image_prefixes=[])
+    assert find_surviving_images(sanitized) == []
