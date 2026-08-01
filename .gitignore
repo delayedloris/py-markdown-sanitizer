@@ -216,3 +216,6 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Generated GitHub Pages (rebuild: uv run python scripts/build_pages.py)
+docs/index.html
