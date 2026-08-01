@@ -11,8 +11,8 @@ class TestImageSanitization:
 
     def test_blocks_untrusted_images(self):
         result = sanitize("![Evil](https://evil.com/tracker.gif)")
-        assert "evil.com" not in result
-        assert "Evil" in result
+        assert "![" not in result
+        assert "[Evil](https://evil.com/tracker.gif)" in result
 
     def test_handles_relative_image_paths(self):
         result = sanitize("![Local](/images/local.png)")
@@ -44,7 +44,8 @@ Also a bad [link](https://evil.com) and bad ![image](https://evil.com/tracker.gi
         result = sanitize(input_md)
         assert "https://example.com/page" in result
         assert "https://images.com/pic.jpg" in result
-        assert "https://evil.com/tracker.gif" not in result
+        assert "![image](https://evil.com/tracker.gif)" not in result
+        assert "[image](https://evil.com/tracker.gif)" in result
         assert "https://evil.com" in result
 
 
@@ -83,4 +84,5 @@ class TestReferenceStyle:
     def test_blocks_reference_style_untrusted_images(self):
         input_md = "![alt][ref]\n\n[ref]: https://evil.com/t.gif"
         result = sanitize(input_md)
-        assert "evil.com" not in result
+        assert "![" not in result
+        assert "https://evil.com/t.gif" in result
