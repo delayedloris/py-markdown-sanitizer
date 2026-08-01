@@ -36,6 +36,17 @@ uv run ruff check .
 uv run ruff format .
 ```
 
+## Examples page
+
+Spot-check input → output in a browser (curated cases + bypass fixtures):
+
+```bash
+uv run python scripts/build_pages.py
+# open docs/index.html
+```
+
+GitHub Pages rebuilds that HTML from the same script on each push to `main`.
+
 ## License
 
 MIT
