@@ -24,7 +24,8 @@ class TestWeirdParsing:
 
     def test_empty_alt_blocked_image(self):
         result = sanitize("![](https://evil.com/t.png)")
-        assert "evil.com" not in result
+        assert "![" not in result
+        assert "https://evil.com/t.png" in result
 
 
 class TestMalformedMarkdown:

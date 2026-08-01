@@ -142,18 +142,21 @@ def _sanitize_html(html: str, options: SanitizeOptions) -> str:
     for img in soup.find_all("img"):
         if not isinstance(img, Tag):
             continue
-        src = img.get("src") or ""
+        src = (img.get("src") or "").strip()
+        alt = _plain(img.get("alt") or "").strip()
         if _is_allowed_image(src, options):
-            img.attrs = {
-                "src": urljoin(options.default_origin, src.strip()),
-                "alt": _plain(img.get("alt", "")),
-            }
+            img.attrs = {"src": urljoin(options.default_origin, src), "alt": alt}
+            continue
+        # Downgrade disallowed http(s) images to links (click required).
+        absolute = urljoin(options.default_origin, src) if src else ""
+        if src and _http_url(absolute) is not None:
+            link = soup.new_tag("a", href=absolute)
+            link.string = alt or absolute
+            img.replace_with(link)
+        elif alt:
+            img.replace_with(alt)
         else:
-            alt = _plain(img.get("alt") or "").strip()
-            if alt:
-                img.replace_with(alt)
-            else:
-                img.decompose()
+            img.decompose()
 
     return str(soup)
 

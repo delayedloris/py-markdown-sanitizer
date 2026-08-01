@@ -19,8 +19,8 @@ class TestSafeHtmlTags:
 
     def test_sanitizes_untrusted_html_images(self):
         result = sanitize('<img src="https://evil.com/tracker.gif" alt="Tracker">')
-        assert "evil.com" not in result
-        assert "Tracker" in result
+        assert "![" not in result
+        assert "[Tracker](https://evil.com/tracker.gif)" in result
 
 
 class TestDangerousHtmlTags:

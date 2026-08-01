@@ -25,8 +25,7 @@ def _sanitize(md: str) -> str:
 def _assert_blocked(md: str) -> None:
     out = _sanitize(md)
     assert validate_html(_md(out)) == []
-    assert "evil.com" not in out
-    assert "@" not in out or "![" not in out
+    assert "![" not in out
 
 
 @pytest.mark.parametrize(

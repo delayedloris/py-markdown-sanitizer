@@ -60,7 +60,8 @@ class TestHtmlInjection:
 
     def test_strips_raw_untrusted_img(self):
         result = sanitize('<img src="https://evil.com/tracker.gif" alt="t">')
-        assert "evil.com" not in result
+        assert "![" not in result
+        assert "[t](https://evil.com/tracker.gif)" in result
 
     def test_keeps_trusted_raw_img(self):
         result = sanitize('<img src="https://images.com/safe.jpg" alt="Safe">')
@@ -84,4 +85,5 @@ class TestMixedMarkdownHtml:
         result = sanitize(input_md)
         assert "https://images.com/a.png" in result
         assert "iframe" not in result.lower()
-        assert "evil.com" not in result
+        assert "![bad]" not in result
+        assert "[bad](https://evil.com/t.png)" in result

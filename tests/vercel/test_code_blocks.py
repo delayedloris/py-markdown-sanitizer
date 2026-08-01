@@ -69,6 +69,7 @@ These are just examples."""
             "```\n![still code](https://evil.com/t.png)\n```\n"
         )
         result = sanitizer.sanitize(input_md)
-        # first image blocked
-        assert result.count("evil.com") == 1
+        # first image downgraded to a link; code fence image left alone
+        assert "![bad]" not in result
+        assert "[bad](https://evil.com/t.png)" in result
         assert "![still code](https://evil.com/t.png)" in result
