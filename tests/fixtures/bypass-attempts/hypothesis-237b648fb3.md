@@ -1,3 +1,1 @@
-![][ref]
-
-[ref]: https://evil.com/t.png ![](https://evil.com/t.png)
+\![0](https://evil.com/t.png)

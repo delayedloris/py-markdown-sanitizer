@@ -4,7 +4,7 @@ from posixpath import normpath
 from urllib.parse import unquote, urljoin, urlsplit
 
 import mistune
-from bs4 import BeautifulSoup, Comment, Tag
+from bs4 import BeautifulSoup, Comment, NavigableString, Tag
 from markdownify import ATX, markdownify
 from mistune.renderers.html import HTMLRenderer
 
@@ -157,6 +157,13 @@ def _sanitize_html(html: str, options: SanitizeOptions) -> str:
             img.replace_with(alt)
         else:
             img.decompose()
+
+    # markdownify turns a text "!" immediately before <a> into ![alt](url).
+    # Insert ZWSP so escaped-bang markdown (\![...]) cannot reconstitute imgs.
+    for a in soup.find_all("a"):
+        prev = a.previous_sibling
+        if isinstance(prev, NavigableString) and str(prev).endswith("!"):
+            a.insert_before("\u200b")
 
     return str(soup)
 
